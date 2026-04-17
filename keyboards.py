@@ -24,21 +24,15 @@ def type_choice_kb() -> InlineKeyboardMarkup:
 
 
 def video_quality_kb(formats: list[dict]) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
+    buttons = []
     for f in formats:
-        label = f.get("label", f.get("format_id", "?"))
-        size = f.get("filesize")
-        if size and size > 0:
-            size_mb = size / (1024 * 1024)
-            label = f"{label} (~{size_mb:.1f} MB)"
-        builder.row(
-            InlineKeyboardButton(
-                text=label,
-                callback_data=f"quality_v_{f.get('format_id', '')}",
-            )
-        )
-    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="quality_back"))
-    return builder.as_markup()
+        height = f.get("height")
+        if height:
+            label = f.get("label", f"{height}p")
+            buttons.append([InlineKeyboardButton(text=label, callback_data=f"quality_v_{height}")])
+    # Добавляем кнопку назад
+    buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="quality_back")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def audio_quality_kb(formats: list[dict]) -> InlineKeyboardMarkup:

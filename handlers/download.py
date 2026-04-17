@@ -318,11 +318,13 @@ async def quality_back(callback: CallbackQuery, state: FSMContext) -> None:
 # ----- Выбор качества и запуск загрузки -----
 @router.callback_query(DownloadStates.chose_quality, F.data.startswith("quality_v_"))
 async def on_quality_video(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
-    format_id = callback.data.replace("quality_v_", "", 1)
-    if not format_id:
+    # Из callback.data приходит что-то вроде "quality_v_720"
+    height_str = callback.data.replace("quality_v_", "", 1)
+    if not height_str.isdigit():
         await callback.answer("Неверный формат.", show_alert=True)
         return
-    await _run_download(callback, bot, state, media_type="video", format_id=format_id)
+    height = int(height_str)
+    await _run_download(callback, bot, state, media_type="video", height=height)
 
 
 @router.callback_query(DownloadStates.chose_quality, F.data.startswith("quality_a_"))
@@ -340,7 +342,8 @@ async def _run_download(
     state: FSMContext,
     *,
     media_type: str,
-    format_id: str,
+    format_id: str | None = None,
+    height: int | None = None,
 ) -> None:
     await callback.answer()
     data = await state.get_data()

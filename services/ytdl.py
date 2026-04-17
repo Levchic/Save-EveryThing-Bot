@@ -141,24 +141,43 @@ def download_video(
 ) -> tuple[Path, str]:
     """
     Скачать видео в out_dir. Возвращает (путь к файлу, заголовок).
-    format_id — id формата yt-dlp; если задан height — выбираем лучший формат с этим height.
+    Приоритет: если передан format_id – используем его.
+    Если нет, но передан height – выбираем лучший формат с этим разрешением.
+    Если нет ни того, ни другого – выбираем лучшее качество с mp4 контейнером.
     """
     out_tpl = str(out_dir / "%(title).100s.%(ext)s")
-    format_sel = format_id or (f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}]/best" if height else "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best")
+
+    # Формируем строку формата для yt-dlp
+    if format_id:
+        format_spec = format_id + "+bestaudio/best"
+    elif height:
+        # Ищем видео с нужным разрешением, предпочитая mp4, и добавляем лучшее аудио
+        format_spec = f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<={height}]+bestaudio/best[height<={height}]/best"
+    else:
+        format_spec = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+
     opts = {
         **_get_ydl_opts_base(),
         "outtmpl": out_tpl,
-        "format": format_sel,
+        "format": format_spec,
         "merge_output_format": "mp4",
         "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}],
     }
-    if format_id:
-        opts["format"] = format_id + "+bestaudio/best"
+
     with yt_dlp.YoutubeDL(opts) as ydl:
         try:
             info = ydl.extract_info(url, download=True)
         except yt_dlp.utils.DownloadError as e:
-            raise YTDLServiceError(_human_error(str(e)))
+            # Если произошла ошибка "format not available" – пробуем fallback
+            if "format not available" in str(e).lower():
+                # Пробуем скачать в лучшем качестве без указания конкретного формата
+                opts["format"] = "bestvideo+bestaudio/best"
+                try:
+                    info = ydl.extract_info(url, download=True)
+                except Exception as e2:
+                    raise YTDLServiceError(_human_error(str(e2)))
+            else:
+                raise YTDLServiceError(_human_error(str(e)))
         except Exception as e:
             raise YTDLServiceError(f"Ошибка загрузки: {e!s}")
 

@@ -30,6 +30,12 @@ def _get_ydl_opts_base() -> dict[str, Any]:
     proxy = os.getenv("YTDL_PROXY", "").strip() or None
     if proxy:
         opts["proxy"] = proxy
+
+        # Добавляем cookies, если файл существует
+    cookies_path = Path(__file__).parent.parent / "cookies.txt"
+    if cookies_path.exists():
+        opts["cookiefile"] = str(cookies_path)
+
     return opts
 
 

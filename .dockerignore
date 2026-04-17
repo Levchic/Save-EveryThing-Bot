@@ -6,3 +6,4 @@ downloads
 .gitignore
 *.md
 .DS_Store
+!cookies.txt
